@@ -1,17 +1,17 @@
-from flask import Flask, jsonify, render_template,Response
+from flask import Flask, jsonify, Response
+from flask_cors import CORS
 import os
 from dotenv import load_dotenv
 import requests
-from flask_cors import CORS
 
 app = Flask(__name__)
-CORS(app)  # Add this line after Flask initialization
+CORS(app)  # Allow cross-origin requests from GitHub Pages frontend
 
 load_dotenv()
 API_KEY = os.getenv('GOOGLE_DRIVE_API_KEY')
 print(f"[INIT] Loaded API Key: {'Set' if API_KEY else 'Missing!'}")
 
-# Define album to folder ID mapping
+# Album to Google Drive folder ID mapping
 folder_ids = {
     'album1': '1aIagh9HNCb6csvbWsE5k13F04eMpKbyw',
     'album2': '1NHd36bGY9JDrdLmf64GtXpWNtx6x3dnP',
@@ -26,13 +26,13 @@ folder_ids = {
 }
 print(f"[INIT] Defined albums: {list(folder_ids.keys())}")
 
-''' ----------------------------------------------------------------------------------------- '''
+# Health check
 @app.route('/')
 def index():
     print("[ROUTE] / (index) accessed")
-    return render_template('index.html')  # Removed api_key=API_KEY for security
+    return jsonify({"message": "Drive Gallery API is online."})
 
-''' ------------------------------------------------------------------------------------------ '''
+# List images in a Google Drive folder (album)
 @app.route('/api/files/<album>')
 def list_files(album):
     print(f"\n[ROUTE] /api/files/{album} called")
@@ -46,10 +46,9 @@ def list_files(album):
 
     all_files = []
     nextPageToken = ''
-    morePages = True
     page_count = 0
 
-    while morePages:
+    while True:
         page_count += 1
         print(f"[INFO] Fetching page {page_count}...")
 
@@ -78,17 +77,14 @@ def list_files(album):
                         'name': file['name'],
                         'thumbnail': file.get('thumbnailLink'),
                         'full_url': f"/api/image/{file['id']}"
-
                     })
             else:
                 print("[WARN] No 'files' key in response")
 
             nextPageToken = data.get('nextPageToken')
-            if nextPageToken:
-                print("[INFO] Next page token found, continuing...")
-            else:
+            if not nextPageToken:
                 print("[INFO] No more pages")
-                morePages = False
+                break
 
         except Exception as e:
             print(f"[ERROR] Exception occurred: {str(e)}")
@@ -97,7 +93,7 @@ def list_files(album):
     print(f"[DONE] Total files retrieved: {len(all_files)}")
     return jsonify(all_files)
 
-''' ------------------------------------------------------------------------------------------- '''
+# Image proxy: stream actual image data
 @app.route('/api/image/<file_id>')
 def proxy_image(file_id):
     google_url = f"https://www.googleapis.com/drive/v3/files/{file_id}?alt=media&key={API_KEY}"
@@ -111,9 +107,8 @@ def proxy_image(file_id):
     except Exception as e:
         print(f"[ERROR] Image proxy failed: {e}")
         return jsonify({"error": "Failed to fetch image"}), 500
-''' ------------------------------------------------------------------------------------------- '''
 
+# Run the app
 if __name__ == '__main__':
-    print("[START] Starting Flask app in debug mode...")
-    app.run(host="0.0.0.0", port=5000)
-
+    print("[START] Starting Flask app...")
+    app.run(debug=True)
