@@ -2,8 +2,11 @@ from flask import Flask, jsonify, render_template,Response
 import os
 from dotenv import load_dotenv
 import requests
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app)  # Add this line after Flask initialization
+
 load_dotenv()
 API_KEY = os.getenv('GOOGLE_DRIVE_API_KEY')
 print(f"[INIT] Loaded API Key: {'Set' if API_KEY else 'Missing!'}")
@@ -112,4 +115,5 @@ def proxy_image(file_id):
 
 if __name__ == '__main__':
     print("[START] Starting Flask app in debug mode...")
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=5000)
+
