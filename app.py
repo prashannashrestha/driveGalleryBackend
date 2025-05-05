@@ -1,0 +1,115 @@
+from flask import Flask, jsonify, render_template,Response
+import os
+from dotenv import load_dotenv
+import requests
+
+app = Flask(__name__)
+load_dotenv()
+API_KEY = os.getenv('GOOGLE_DRIVE_API_KEY')
+print(f"[INIT] Loaded API Key: {'Set' if API_KEY else 'Missing!'}")
+
+# Define album to folder ID mapping
+folder_ids = {
+    'album1': '1aIagh9HNCb6csvbWsE5k13F04eMpKbyw',
+    'album2': '1NHd36bGY9JDrdLmf64GtXpWNtx6x3dnP',
+    'album3': '1EEUW3ETAkMezjzd4G-7GYwwMZtuoVgf6',
+    'album4': '1Im5mg-nqrrBgVhPllPJgqQmmnZ6BmJCR',
+    'album5': '1f2gFlEHhzxrJHeHeMF3ASyJkF4yJoLSl',
+    'album6': '1Ep114gvIhDBSLs0cNYibktEEAxHnXgj_',
+    'album7': '1VzxdDh4vXHba56XVm5i8cTRsC0EecXJS',
+    'album8': '1a-nkfFWR7p_eoiCCvchq0BAU1QIc7Hsz',
+    'album9': '1V9LRaA8cVIcslLcvQuxPup2tnW6Qlsjj',
+    'album10': '1DHKMUIsAbTNbXO5_Kq0nlUj65u5gxPdL'
+}
+print(f"[INIT] Defined albums: {list(folder_ids.keys())}")
+
+''' ----------------------------------------------------------------------------------------- '''
+@app.route('/')
+def index():
+    print("[ROUTE] / (index) accessed")
+    return render_template('index.html')  # Removed api_key=API_KEY for security
+
+''' ------------------------------------------------------------------------------------------ '''
+@app.route('/api/files/<album>')
+def list_files(album):
+    print(f"\n[ROUTE] /api/files/{album} called")
+
+    folder_id = folder_ids.get(album)
+    if not folder_id:
+        print("[ERROR] Album not found in mapping")
+        return jsonify({"error": "Album not found"}), 404
+
+    print(f"[INFO] Using folder ID: {folder_id}")
+
+    all_files = []
+    nextPageToken = ''
+    morePages = True
+    page_count = 0
+
+    while morePages:
+        page_count += 1
+        print(f"[INFO] Fetching page {page_count}...")
+
+        url = (
+            f"https://www.googleapis.com/drive/v3/files"
+            f"?q='{folder_id}'+in+parents+and+mimeType+contains+'image/'"
+            f"&orderBy=name"
+            f"&fields=files(id,name,mimeType,thumbnailLink),nextPageToken"
+            f"&pageSize=100"
+            f"&pageToken={nextPageToken}"
+            f"&key={API_KEY}"
+        )
+
+        print(f"[DEBUG] URL: {url}")
+
+        try:
+            response = requests.get(url)
+            print(f"[HTTP] Response status: {response.status_code}")
+            data = response.json()
+
+            if 'files' in data:
+                print(f"[INFO] {len(data['files'])} file(s) found on page {page_count}")
+                for file in data['files']:
+                    all_files.append({
+                        'id': file['id'],
+                        'name': file['name'],
+                        'thumbnail': file.get('thumbnailLink'),
+                        'full_url': f"/api/image/{file['id']}"
+
+                    })
+            else:
+                print("[WARN] No 'files' key in response")
+
+            nextPageToken = data.get('nextPageToken')
+            if nextPageToken:
+                print("[INFO] Next page token found, continuing...")
+            else:
+                print("[INFO] No more pages")
+                morePages = False
+
+        except Exception as e:
+            print(f"[ERROR] Exception occurred: {str(e)}")
+            return jsonify({"error": str(e)}), 500
+
+    print(f"[DONE] Total files retrieved: {len(all_files)}")
+    return jsonify(all_files)
+
+''' ------------------------------------------------------------------------------------------- '''
+@app.route('/api/image/<file_id>')
+def proxy_image(file_id):
+    google_url = f"https://www.googleapis.com/drive/v3/files/{file_id}?alt=media&key={API_KEY}"
+    try:
+        response = requests.get(google_url, stream=True)
+        return Response(
+            response.iter_content(chunk_size=4096),
+            content_type=response.headers.get('Content-Type', 'application/octet-stream'),
+            status=response.status_code
+        )
+    except Exception as e:
+        print(f"[ERROR] Image proxy failed: {e}")
+        return jsonify({"error": "Failed to fetch image"}), 500
+''' ------------------------------------------------------------------------------------------- '''
+
+if __name__ == '__main__':
+    print("[START] Starting Flask app in debug mode...")
+    app.run(debug=True)
