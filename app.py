@@ -14,15 +14,7 @@ print(f"[INIT] Loaded API Key: {'Set' if API_KEY else 'Missing!'}")
 # Album to Google Drive folder ID mapping
 folder_ids = {
     'album1': '1aIagh9HNCb6csvbWsE5k13F04eMpKbyw',
-    'album2': '1NHd36bGY9JDrdLmf64GtXpWNtx6x3dnP',
-    'album3': '1EEUW3ETAkMezjzd4G-7GYwwMZtuoVgf6',
-    'album4': '1Im5mg-nqrrBgVhPllPJgqQmmnZ6BmJCR',
-    'album5': '1f2gFlEHhzxrJHeHeMF3ASyJkF4yJoLSl',
-    'album6': '1Ep114gvIhDBSLs0cNYibktEEAxHnXgj_',
-    'album7': '1VzxdDh4vXHba56XVm5i8cTRsC0EecXJS',
-    'album8': '1a-nkfFWR7p_eoiCCvchq0BAU1QIc7Hsz',
-    'album9': '1V9LRaA8cVIcslLcvQuxPup2tnW6Qlsjj',
-    'album10': '1DHKMUIsAbTNbXO5_Kq0nlUj65u5gxPdL'
+    'album2': '1NHd36bGY9JDrdLmf64GtXpWNtx6x3dnP'
 }
 print(f"[INIT] Defined albums: {list(folder_ids.keys())}")
 
